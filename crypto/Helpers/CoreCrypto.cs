@@ -5,21 +5,21 @@ using System.Text;
 
 namespace crypto.Helpers
 {
-    public class CoreDecryption
+    public class CoreCrypto
     {
+        static byte[] saltBytes = { 0x12, 0x18, 0x11, 0x28, 0x99, 0x21, 0x13, 0x39, 0x14, 0x55, 0x88, 0x90, 0x20, 0x59, 0x33, 0x99 };
         static byte[] AES_Encrypt(byte[] bytesToBeEncrypted, byte[] passwordBytes)
         {
+            // saltBytes = GenerateSalt(8);
+            byte[] saltedHashBytes = GenerateSaltedHash(passwordBytes, saltBytes);
             byte[] encryptedBytes = null;
-            byte[] saltBytes = GenerateSalt();
-           // byte[] saltBytes = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
             using (MemoryStream ms = new MemoryStream())
             {
                 using (RijndaelManaged AES = new RijndaelManaged())
                 {
                     AES.KeySize = 256;
                     AES.BlockSize = 128;
-
-                    var key = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 1000);
+                     var key = new Rfc2898DeriveBytes(passwordBytes, saltedHashBytes, 1000);
                     AES.Key = key.GetBytes(AES.KeySize / 8);
                     AES.IV = key.GetBytes(AES.BlockSize / 8);
 
@@ -39,17 +39,15 @@ namespace crypto.Helpers
         static byte[] AES_Decrypt(byte[] bytesToBeDecrypted, byte[] passwordBytes)
         {
             byte[] decryptedBytes = null;
-            byte[] saltBytes = GenerateSalt();
-           // byte[] saltBytes = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
-
+            byte[] saltedHashBytes = GenerateSaltedHash(passwordBytes, saltBytes);
             using (MemoryStream ms = new MemoryStream())
             {
                 using (RijndaelManaged AES = new RijndaelManaged())
                 {
                     AES.KeySize = 256;
                     AES.BlockSize = 128;
-
-                    var key = new Rfc2898DeriveBytes(passwordBytes, saltBytes, 1000);
+                    AES.Padding = PaddingMode.None;
+                    var key = new Rfc2898DeriveBytes(passwordBytes, saltedHashBytes, 1000);
                     AES.Key = key.GetBytes(AES.KeySize / 8);
                     AES.IV = key.GetBytes(AES.BlockSize / 8);
 
@@ -77,7 +75,6 @@ namespace crypto.Helpers
 
             byte[] bytesEncrypted = AES_Encrypt(bytesToBeEncrypted, passwordBytes);
 
-
             File.WriteAllBytes(outFilePath, bytesEncrypted);
             if (delete)
                 File.Delete(inFilePath);
@@ -91,18 +88,36 @@ namespace crypto.Helpers
 
             byte[] bytesDecrypted = AES_Decrypt(bytesToBeDecrypted, passwordBytes);
 
+
             File.WriteAllBytes(outFilePath, bytesDecrypted);
             if (delete)
                 File.Delete(inFilePath);
 
         }
-        static byte[] GenerateSalt()
+        static byte[] GenerateSalt(int n)
         {
             RNGCryptoServiceProvider rncCsp = new RNGCryptoServiceProvider();
-            byte[] salt = new byte[32];
+            byte[] salt = new byte[n];
             rncCsp.GetBytes(salt);
 
             return salt;
+        }
+        static byte[] GenerateSaltedHash(byte[] plainText, byte[] salt)
+        {
+            HashAlgorithm algorithm = new SHA256Managed();
+            byte[] plainTextWithSaltBytes =
+              new byte[plainText.Length + salt.Length];
+
+            for (int i = 0; i < plainText.Length; i++)
+            {
+                plainTextWithSaltBytes[i] = plainText[i];
+            }
+            for (int i = 0; i < salt.Length; i++)
+            {
+                plainTextWithSaltBytes[plainText.Length + i] = salt[i];
+            }
+
+            return algorithm.ComputeHash(plainTextWithSaltBytes);
         }
     }
 }
