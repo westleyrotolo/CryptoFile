@@ -7,7 +7,6 @@ namespace crypto
     {
         public static void Main(string[] args)
         {
-            // CoreDecryption.EncryptFile("f.png", "ff.png", "abcd");
             while (true)
             {
                 Console.WriteLine("Encrypt (E) or Decrypt (D) files?");
